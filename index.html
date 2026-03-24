@@ -24,8 +24,10 @@
     
     .warning { background: #fef3c7; color: #92400e; padding: 12px 15px; border-radius: 8px; margin: 15px 0; display: none; font-size: 14px; border-left: 4px solid #f59e0b; }
     .result { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-    .diff { font-size: 20px; font-weight: 700; color: #b91c1c; text-align: center; margin-top: 20px; }
-    .insight { text-align:center; color:#475569; margin-top: 10px; font-size: 14px; line-height: 1.6; }
+    .diff-box { background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 20px; }
+    .final-amounts { font-size: 16px; color: #475569; margin-bottom: 15px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px; line-height: 2; }
+    .diff-text { font-size: 22px; font-weight: 700; color: #b91c1c; text-align: center; }
+    .insight { text-align:center; color:#475569; margin-top: 15px; font-size: 14px; line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -62,16 +64,20 @@
 
   <div class="result" id="result" style="display:none;">
     <canvas id="chart" height="150"></canvas>
-    <div class="diff" id="diff"></div>
+    
+    <div class="diff-box">
+      <div id="finalAmounts" class="final-amounts"></div>
+      <div id="diff" class="diff-text"></div>
+    </div>
+
     <p class="insight">
       圖表顯示為<strong>「含息再投資」</strong>的真實總資產變化。<br>
-      如果您選擇的是高股息 ETF，這代表即使您把領到的股息全部無腦買回，長期下來依然可能被市值型 ETF 大幅拉開差距。
+      這代表即使您把領到的股息全部無腦買回，不同策略間的差距依然巨大。
     </p>
   </div>
 </div>
 
 <script>
-// 22 檔 ETF 清單對照表
 const etfList = [
   { id: '0050.TW', name: '0050 元大台灣50' },
   { id: '0056.TW', name: '0056 元大高股息' },
@@ -97,7 +103,6 @@ const etfList = [
   { id: '00934.TW', name: '00934 中信成長高股息' }
 ];
 
-// 初始化下拉選單
 function initSelects() {
   const selectA = document.getElementById('etfA');
   const selectB = document.getElementById('etfB');
@@ -107,36 +112,26 @@ function initSelects() {
   });
   selectA.innerHTML = optionsHTML;
   selectB.innerHTML = optionsHTML;
-  
-  // 戰略性預設：0050 vs 0056
   selectA.value = '0050.TW';
   selectB.value = '0056.TW';
 }
 
 let etfData = {};
 
-// 載入 JSON
 fetch('etf_data.json')
   .then(r => r.json())
   .then(d => { 
     etfData = d; 
-    initSelects(); // 載入完成後初始化選單
+    initSelects(); 
   })
-  .catch(e => console.error("JSON 載入失敗，請確認檔案是否存在", e));
+  .catch(e => console.error("JSON 載入失敗", e));
 
 function calculate() {
-  if(Object.keys(etfData).length === 0) {
-    alert("數據載入中或載入失敗，請稍候再試。");
-    return;
-  }
+  if(Object.keys(etfData).length === 0) return;
 
   const tickerA = document.getElementById('etfA').value;
   const tickerB = document.getElementById('etfB').value;
-  
-  if(tickerA === tickerB) {
-    alert("請選擇兩檔不同的 ETF 進行對戰！");
-    return;
-  }
+  if(tickerA === tickerB) { alert("請選擇兩檔不同的 ETF 對戰！"); return; }
 
   const nameA = document.getElementById('etfA').options[document.getElementById('etfA').selectedIndex].text.split(' ')[0];
   const nameB = document.getElementById('etfB').options[document.getElementById('etfB').selectedIndex].text.split(' ')[0];
@@ -148,14 +143,12 @@ function calculate() {
   const dataA = etfData[tickerA] || [];
   const dataB = etfData[tickerB] || [];
   
-  // 防呆：找共同存在的最長歷史時間
   const maxMonths = Math.min(dataA.length, dataB.length);
   const actualMonths = Math.min(maxMonths, requestedMonths);
   
   const warningDiv = document.getElementById('warning');
   if (actualMonths < requestedMonths) {
-    const actualYears = (actualMonths / 12).toFixed(1);
-    warningDiv.innerHTML = `⚠️ <strong>溫馨提醒：</strong>因其中一檔 ETF 上市時間較晚，系統已自動為您切換為近 <strong>${actualYears} 年</strong> 的共同歷史數據進行對比。`;
+    warningDiv.innerHTML = `⚠️ <strong>注意：</strong>因上市時間限制，僅使用近 <strong>${(actualMonths/12).toFixed(1)} 年</strong> 歷史數據進行對比。`;
     warningDiv.style.display = 'block';
   } else {
     warningDiv.style.display = 'none';
@@ -173,58 +166,44 @@ function calculate() {
     const dA = sliceA[i];
     const dB = sliceB[i];
     labels.push(dA.date);
-    
-    // 每月定額買入，計算累積股數 (依據還原收盤價)
     unitsA += monthly / dA.adj_close;
     unitsB += monthly / dB.adj_close;
-    
-    // 計算當下總資產價值
-    const valA = Math.round(unitsA * dA.adj_close);
-    const valB = Math.round(unitsB * dB.adj_close);
-    
-    lineA.push(valA);
-    lineB.push(valB);
+    lineA.push(Math.round(unitsA * dA.adj_close));
+    lineB.push(Math.round(unitsB * dB.adj_close));
   }
 
-  // 畫圖表
   if (window.myChart) window.myChart.destroy();
   window.myChart = new Chart(document.getElementById('chart'), {
     type: 'line',
     data: {
       labels: labels,
       datasets: [
-        { label: nameA + ' (總報酬)', data: lineA, borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.1)', tension: 0.3, borderWidth: 3, pointRadius: 0 },
-        { label: nameB + ' (總報酬)', data: lineB, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.3, borderWidth: 3, pointRadius: 0 }
+        { label: nameA + ' (含息總報酬)', data: lineA, borderColor: '#2563eb', tension: 0.3, borderWidth: 3, pointRadius: 0 },
+        { label: nameB + ' (含息總報酬)', data: lineB, borderColor: '#f59e0b', tension: 0.3, borderWidth: 3, pointRadius: 0 }
       ]
     },
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
-      plugins: { 
-        legend: { position: 'top', labels: { font: { size: 14, family: 'system-ui' } } },
-        tooltip: { callbacks: { label: function(context) { return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' 元'; } } }
-      },
-      scales: { 
-        y: { ticks: { callback: v => (v/10000).toFixed(0) + ' 萬' }, grid: { color: '#f1f5f9' } },
-        x: { grid: { display: false } }
-      }
+      scales: { y: { ticks: { callback: v => (v/10000).toFixed(0) + ' 萬' } } }
     }
   });
 
-  // 計算並顯示震撼差異
   const finalA = lineA[lineA.length - 1];
   const finalB = lineB[lineB.length - 1];
   const diff = finalA - finalB;
   
-  const diffElem = document.getElementById('diff');
-  if (diff > 0) {
-    diffElem.innerHTML = `🏆 同樣投入資金，${nameA} 總資產多出 <strong>${(diff/10000).toFixed(1)} 萬</strong>`;
-  } else if (diff < 0) {
-    diffElem.innerHTML = `🏆 同樣投入資金，${nameB} 總資產多出 <strong>${(Math.abs(diff)/10000).toFixed(1)} 萬</strong>`;
-  } else {
-    diffElem.innerHTML = `🤝 兩檔 ETF 最終總資產平手`;
-  }
+  // 顯示最終具體金額
+  document.getElementById('finalAmounts').innerHTML = `
+    🎯 ${nameA} 最終資產：<span style="color: #2563eb; font-weight: bold;">${(finalA/10000).toFixed(1)} 萬</span><br>
+    🎯 ${nameB} 最終資產：<span style="color: #f59e0b; font-weight: bold;">${(finalB/10000).toFixed(1)} 萬</span>
+  `;
+
+  const diffText = diff > 0 
+    ? `🏆 ${nameA} 總額勝出 <strong>${(diff/10000).toFixed(1)} 萬</strong>` 
+    : `🏆 ${nameB} 總額勝出 <strong>${(Math.abs(diff)/10000).toFixed(1)} 萬</strong>`;
   
+  document.getElementById('diff').innerHTML = diff === 0 ? "🤝 最終總資產平手" : diffText;
   document.getElementById('result').style.display = 'block';
 }
 </script>
