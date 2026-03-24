@@ -152,15 +152,26 @@ function calculate() {
   }
 
   const totalInvested = m * actualMonths;
-  const totalInvestedWan = (totalInvested / 10000).toFixed(0).toLocaleString();   // ← 修正這裡
+  const totalInvestedWan = (totalInvested / 10000).toFixed(0).toLocaleString();
   
   const fA = lA[lA.length - 1], fB = lB[lB.length - 1];
   const roiA = ((fA / totalInvested) - 1) * 100;
   const roiB = ((fB / totalInvested) - 1) * 100;
-  
+
+  // ✨ 修正後的標的年化報酬計算（加強防護）
   const realYears = actualMonths / 12;
-  const cagrA = (Math.pow(sA[actualMonths - 1].adj_close / sA[0].adj_close, 1 / realYears) - 1) * 100;
-  const cagrB = (Math.pow(sB[actualMonths - 1].adj_close / sB[0].adj_close, 1 / realYears) - 1) * 100;
+  let cagrA = 0, cagrB = 0;
+  
+  if (sA.length > 0 && sA[0].adj_close > 0) {
+    const firstA = sA[0].adj_close;
+    const lastA = sA[sA.length - 1].adj_close;
+    cagrA = (Math.pow(lastA / firstA, 1 / realYears) - 1) * 100;
+  }
+  if (sB.length > 0 && sB[0].adj_close > 0) {
+    const firstB = sB[0].adj_close;
+    const lastB = sB[sB.length - 1].adj_close;
+    cagrB = (Math.pow(lastB / firstB, 1 / realYears) - 1) * 100;
+  }
 
   if (window.myChart) window.myChart.destroy();
   window.myChart = new Chart(document.getElementById('chart'), {
