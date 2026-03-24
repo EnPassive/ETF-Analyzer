@@ -19,7 +19,7 @@
     label { display:block; margin-bottom: 8px; font-weight:600; color:#334155; font-size: 14px; }
     input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; box-sizing: border-box; background: #f8fafc; }
     
-    button { background: var(--primary-color); color: white; padding: 14px 32px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin: 10px 0 10px; transition: 0.2s; }
+    button { background: var(--primary-color); color: white; padding: 14px 32px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin: 10px 0; transition: 0.2s; }
     button:hover { background: #1d4ed8; }
 
     .disclaimer-top { text-align:center; color: var(--risk-red); font-size:13px; font-weight:bold; margin:10px 0 15px; line-height:1.6; background:#fff1f0; padding:12px; border-radius:8px; border:1px solid #ffccc7; }
@@ -28,7 +28,11 @@
     .warning { background: #fef3c7; color: #92400e; padding: 12px 15px; border-radius: 8px; margin: 15px 0; display: none; font-size: 14px; border-left: 4px solid #f59e0b; }
     .result { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); }
     .diff-box { background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-top: 20px; }
-    .final-amounts { font-size: 16px; color: #475569; margin-bottom: 15px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px; line-height: 2; }
+    .final-amounts { font-size: 16px; color: #475569; margin-bottom: 15px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px; line-height: 2.2; }
+    
+    .cagr-badge { display: inline-block; background: #e0e7ff; color: #1e40af; font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 6px; margin-left: 6px; vertical-align: middle; }
+    .cagr-badge-orange { background: #ffedd5; color: #c2410c; }
+    .cagr-badge-neutral { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     .diff-text { font-size: 22px; font-weight: 700; color: #b91c1c; text-align: center; }
 
     .brand-section { margin-top: 40px; padding-top: 25px; border-top: 2px solid #f1f5f9; text-align: center; }
@@ -70,7 +74,7 @@
     過去績效不代表未來結果，投資必有風險，決策前請務必自行判斷。
   </div>
   <div class="data-source-warning">
-    ⚠️ 註：資料來源為公開市場歷史數據 (Yahoo Finance)，個別 ETF 可能因 API 調整演算法出現微小偏差，精確報酬請以投信官網為準。
+    ⚠️ 註：資料來源為公開市場歷史數據 (Yahoo Finance)，個別 ETF 可能因 API 調整出現微小偏差，精確報酬請以投信官網為準。
   </div>
 
   <div id="warning" class="warning"></div>
@@ -81,8 +85,9 @@
       <div id="finalAmounts" class="final-amounts"></div>
       <div id="diff" class="diff-text"></div>
     </div>
-    <p style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:15px;">
-      * 以上數據採用「還原收盤價 (Adjusted Close)」，已計入股息再投資之複利效應。
+    <p style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:15px; line-height:1.6;">
+      * 以上為「每月初定額投入」並「股息全數再投資」之模擬結果。<br>
+      * 「累積報酬」為你的實際總獲利百分比；「標的年化」為該 ETF 自身長期複合成長率（Time-Weighted CAGR）。
     </p>
   </div>
 
@@ -101,45 +106,69 @@
   </div>
   © 2026 <strong>EnPassive 理性財務自由工程</strong>。保留所有權利。<br>
   本工具為個人原創作品，禁止商業複製、轉售、二次開發或用於 AI 訓練資料集。<br>
-  違者將依台灣著作權法追訴（重製權 + 公開傳輸權）。
+  違者將依台灣著作權法追訴。
 </footer>
 
 <script>
 const etfList = [
   { id: '0050.TW', name: '0050 元大台灣50' }, { id: '0056.TW', name: '0056 元大高股息' }, { id: '006208.TW', name: '006208 富邦台50' }, { id: '00878.TW', name: '00878 國泰永續高股息' }, { id: '00929.TW', name: '00929 復華台灣科技優息' }, { id: '00919.TW', name: '00919 群益台灣精選高息' }, { id: '00713.TW', name: '00713 元大台灣高息低波' }, { id: '00918.TW', name: '00918 大華優利高填息30' }, { id: '0052.TW', name: '0052 富邦科技' }, { id: '00939.TW', name: '00939 統一台灣高息動能' }, { id: '00940.TW', name: '00940 元大台灣價值高息' }, { id: '00915.TW', name: '00915 凱基優選高股息30' }, { id: '00881.TW', name: '00881 國泰台灣5G+' }, { id: '00891.TW', name: '00891 中信關鍵半導體' }, { id: '00900.TW', name: '00900 富邦特選高股息30' }, { id: '00922.TW', name: '00922 國泰台灣領袖50' }, { id: '00923.TW', name: '00923 群益台灣ESG低碳' }, { id: '00692.TW', name: '00692 富邦公司治理' }, { id: '00850.TW', name: '00850 元大台灣ESG永續' }, { id: '00733.TW', name: '00733 富邦台灣中小' }, { id: '00905.TW', name: '00905 FT臺灣Smart' }, { id: '00934.TW', name: '00934 中信成長高股息' }, { id: '00936.TW', name: '00936 台新臺灣IC設計' }, { id: '00944.TW', name: '00944 野村臺灣趨勢高股息' }, { id: '00946.TW', name: '00946 群益台灣科技高息' }, { id: '0051.TW', name: '0051 元大中型100' }, { id: '00894.TW', name: '00894 中信臺灣智慧50' }, { id: '00896.TW', name: '00896 中信綠能及電動車' }, { id: '00901.TW', name: '00901 永豐台灣智能車供應鏈' }, { id: '00904.TW', name: '00904 新光臺灣半導體30' }, { id: '00907.TW', name: '00907 永豐台灣優選入息' }
 ];
+
 function initSelects() {
   const sA = document.getElementById('etfA'), sB = document.getElementById('etfB');
   let h = ''; etfList.forEach(e => h += `<option value="${e.id}">${e.name}</option>`);
   sA.innerHTML = h; sB.innerHTML = h; sA.value = '0050.TW'; sB.value = '0056.TW';
 }
+
 let etfData = {};
 fetch('etf_data.json').then(r => r.json()).then(d => { etfData = d; initSelects(); });
+
 function calculate() {
   const tA = document.getElementById('etfA').value, tB = document.getElementById('etfB').value;
   if(tA === tB) { alert("請選擇兩檔不同的 ETF！"); return; }
+  
   const nA = document.getElementById('etfA').options[document.getElementById('etfA').selectedIndex].text.split(' ')[0];
   const nB = document.getElementById('etfB').options[document.getElementById('etfB').selectedIndex].text.split(' ')[0];
   const m = parseInt(document.getElementById('amount').value) || 10000, y = parseInt(document.getElementById('years').value);
+  
   const dataA = etfData[tA] || [], dataB = etfData[tB] || [];
   const actualMonths = Math.min(dataA.length, dataB.length, y * 12);
+  
   const warn = document.getElementById('warning');
-  if (actualMonths < y * 12) { warn.innerHTML = `⚠️ 注意：僅使用近 <strong>${(actualMonths/12).toFixed(1)} 年</strong> 歷史數據進行對比。`; warn.style.display = 'block'; } else warn.style.display = 'none';
+  if (actualMonths < y * 12) { 
+    warn.innerHTML = `⚠️ 注意：因上市時間限制，僅使用近 <strong>${(actualMonths/12).toFixed(1)} 年</strong> 歷史數據進行對比。`; 
+    warn.style.display = 'block'; 
+  } else warn.style.display = 'none';
+  
   const sA = dataA.slice(-actualMonths), sB = dataB.slice(-actualMonths);
   let uA = 0, uB = 0, l = [], lA = [], lB = [];
+  
   for (let i = 0; i < actualMonths; i++) {
-    l.push(sA[i].date); uA += m / sA[i].adj_close; uB += m / sB[i].adj_close;
-    lA.push(Math.round(uA * sA[i].adj_close)); lB.push(Math.round(uB * sB[i].adj_close));
+    l.push(sA[i].date); 
+    uA += m / sA[i].adj_close; 
+    uB += m / sB[i].adj_close;
+    lA.push(Math.round(uA * sA[i].adj_close)); 
+    lB.push(Math.round(uB * sB[i].adj_close));
   }
+
+  const totalInvested = m * actualMonths;
+  const totalInvestedWan = (totalInvested / 10000).toFixed(0).toLocaleString();   // ← 修正這裡
+  
+  const fA = lA[lA.length - 1], fB = lB[lB.length - 1];
+  const roiA = ((fA / totalInvested) - 1) * 100;
+  const roiB = ((fB / totalInvested) - 1) * 100;
+  
+  const realYears = actualMonths / 12;
+  const cagrA = (Math.pow(sA[actualMonths - 1].adj_close / sA[0].adj_close, 1 / realYears) - 1) * 100;
+  const cagrB = (Math.pow(sB[actualMonths - 1].adj_close / sB[0].adj_close, 1 / realYears) - 1) * 100;
+
   if (window.myChart) window.myChart.destroy();
   window.myChart = new Chart(document.getElementById('chart'), {
     type: 'line', 
     data: { 
       labels: l, 
       datasets: [
-        // 藍色實線，粗一點
         { label: nA + ' (總報酬)', data: lA, borderColor: '#2563eb', tension: 0.3, borderWidth: 3, pointRadius: 0 }, 
-        // 橘色虛線，細一點
         { label: nB + ' (總報酬)', data: lB, borderColor: '#ea580c', tension: 0.3, borderWidth: 2, pointRadius: 0, borderDash: [6, 4] }
       ] 
     },
@@ -149,8 +178,22 @@ function calculate() {
       scales: { y: { ticks: { callback: v => (v/10000).toFixed(0) + ' 萬' } } } 
     }
   });
-  const fA = lA[lA.length - 1], fB = lB[lB.length - 1], d = fA - fB;
-  document.getElementById('finalAmounts').innerHTML = `🎯 ${nA} 最終資產：<span style="color:#2563eb;font-weight:bold">${(fA/10000).toLocaleString()} 萬</span><br>🎯 ${nB} 最終資產：<span style="color:#ea580c;font-weight:bold">${(fB/10000).toLocaleString()} 萬</span>`;
+
+  const d = fA - fB;
+  
+  document.getElementById('finalAmounts').innerHTML = `
+    <div style="font-size: 15px; color: #475569; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">
+      💰 <strong>總投入本金：${totalInvestedWan} 萬</strong> （共 ${actualMonths} 個月，每月 ${m.toLocaleString()} 元）
+    </div>
+    🎯 ${nA} 最終資產：<span style="color:#2563eb;font-weight:bold;font-size:18px;">${(fA/10000).toLocaleString()} 萬</span> 
+    <span class="cagr-badge">累積報酬 +${roiA.toFixed(1)}%</span>
+    <span class="cagr-badge cagr-badge-neutral">標的年化 ${cagrA.toFixed(2)}%</span><br>
+    
+    🎯 ${nB} 最終資產：<span style="color:#ea580c;font-weight:bold;font-size:18px;">${(fB/10000).toLocaleString()} 萬</span> 
+    <span class="cagr-badge cagr-badge-orange">累積報酬 +${roiB.toFixed(1)}%</span>
+    <span class="cagr-badge cagr-badge-neutral">標的年化 ${cagrB.toFixed(2)}%</span>
+  `;
+  
   document.getElementById('diff').innerHTML = d === 0 ? "🤝 最終總資產平手" : `🏆 ${d > 0 ? nA : nB} 總額勝出 <strong>${(Math.abs(d)/10000).toFixed(1)} 萬</strong>`;
   document.getElementById('result').style.display = 'block';
 }
