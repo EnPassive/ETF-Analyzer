@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EnPassive｜ETF 總報酬幻覺拆解器</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f0f4f8; color: #1e293b; margin:0; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; padding: 30px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    h1 { color: #0f172a; text-align: center; margin-bottom: 8px; font-size: 26px; }
+    h1 span { color: #2563eb; }
+    .subtitle { text-align:center; color:#64748b; font-size:16px; margin-bottom:30px; }
+    
+    .flex-row { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+    .flex-col { flex: 1; min-width: 250px; }
+    
+    label { display:block; margin-bottom: 8px; font-weight:600; color:#334155; font-size: 14px; }
+    input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; box-sizing: border-box; background: #f8fafc; transition: all 0.2s; }
+    input:focus, select:focus { border-color: #2563eb; outline: none; background: #fff; }
+    
+    button { background: #2563eb; color: white; padding: 14px 32px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin: 10px 0 20px; transition: background 0.2s; }
+    button:hover { background: #1d4ed8; }
+    
+    .warning { background: #fef3c7; color: #92400e; padding: 12px 15px; border-radius: 8px; margin: 15px 0; display: none; font-size: 14px; border-left: 4px solid #f59e0b; }
+    .result { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+    .diff { font-size: 20px; font-weight: 700; color: #b91c1c; text-align: center; margin-top: 20px; }
+    .insight { text-align:center; color:#475569; margin-top: 10px; font-size: 14px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>理性財務自由 <span>ETF 總報酬對決</span></h1>
+  <p class="subtitle">配息率再高，也敵不過真實的複利。用數據打破高股息幻覺。</p>
+
+  <div class="flex-row">
+    <div class="flex-col">
+      <label>對戰 ETF (A)：</label>
+      <select id="etfA"></select>
+    </div>
+    <div class="flex-col">
+      <label>對戰 ETF (B)：</label>
+      <select id="etfB"></select>
+    </div>
+  </div>
+
+  <div class="flex-row">
+    <div class="flex-col">
+      <label>每月初定額投入（元）：</label>
+      <input type="number" id="amount" value="10000" step="1000">
+    </div>
+    <div class="flex-col">
+      <label>最大回測年限（年）：<span id="yearsValue" style="color:#2563eb;">15</span></label>
+      <input type="range" id="years" min="3" max="20" value="15" oninput="document.getElementById('yearsValue').textContent=this.value">
+    </div>
+  </div>
+
+  <button onclick="calculate()">🚀 啟動總報酬壓力測試</button>
+
+  <div id="warning" class="warning"></div>
+
+  <div class="result" id="result" style="display:none;">
+    <canvas id="chart" height="150"></canvas>
+    <div class="diff" id="diff"></div>
+    <p class="insight">
+      圖表顯示為<strong>「含息再投資」</strong>的真實總資產變化。<br>
+      如果您選擇的是高股息 ETF，這代表即使您把領到的股息全部無腦買回，長期下來依然可能被市值型 ETF 大幅拉開差距。
+    </p>
+  </div>
+</div>
+
+<script>
+// 22 檔 ETF 清單對照表
+const etfList = [
+  { id: '0050.TW', name: '0050 元大台灣50' },
+  { id: '0056.TW', name: '0056 元大高股息' },
+  { id: '006208.TW', name: '006208 富邦台50' },
+  { id: '00878.TW', name: '00878 國泰永續高股息' },
+  { id: '00929.TW', name: '00929 復華台灣科技優息' },
+  { id: '00919.TW', name: '00919 群益台灣精選高息' },
+  { id: '00713.TW', name: '00713 元大台灣高息低波' },
+  { id: '00918.TW', name: '00918 大華優利高填息30' },
+  { id: '0052.TW', name: '0052 富邦科技' },
+  { id: '00939.TW', name: '00939 統一台灣高息動能' },
+  { id: '00940.TW', name: '00940 元大台灣價值高息' },
+  { id: '00915.TW', name: '00915 凱基優選高股息30' },
+  { id: '00881.TW', name: '00881 國泰台灣5G+' },
+  { id: '00891.TW', name: '00891 中信關鍵半導體' },
+  { id: '00900.TW', name: '00900 富邦特選高股息30' },
+  { id: '00922.TW', name: '00922 國泰台灣領袖50' },
+  { id: '00923.TW', name: '00923 群益台灣ESG低碳' },
+  { id: '00692.TW', name: '00692 富邦公司治理' },
+  { id: '00850.TW', name: '00850 元大台灣ESG永續' },
+  { id: '00733.TW', name: '00733 富邦台灣中小' },
+  { id: '00905.TW', name: '00905 FT臺灣Smart' },
+  { id: '00934.TW', name: '00934 中信成長高股息' }
+];
+
+// 初始化下拉選單
+function initSelects() {
+  const selectA = document.getElementById('etfA');
+  const selectB = document.getElementById('etfB');
+  let optionsHTML = '';
+  etfList.forEach(etf => {
+    optionsHTML += `<option value="${etf.id}">${etf.name}</option>`;
+  });
+  selectA.innerHTML = optionsHTML;
+  selectB.innerHTML = optionsHTML;
+  
+  // 戰略性預設：0050 vs 0056
+  selectA.value = '0050.TW';
+  selectB.value = '0056.TW';
+}
+
+let etfData = {};
+
+// 載入 JSON
+fetch('etf_data.json')
+  .then(r => r.json())
+  .then(d => { 
+    etfData = d; 
+    initSelects(); // 載入完成後初始化選單
+  })
+  .catch(e => console.error("JSON 載入失敗，請確認檔案是否存在", e));
+
+function calculate() {
+  if(Object.keys(etfData).length === 0) {
+    alert("數據載入中或載入失敗，請稍候再試。");
+    return;
+  }
+
+  const tickerA = document.getElementById('etfA').value;
+  const tickerB = document.getElementById('etfB').value;
+  
+  if(tickerA === tickerB) {
+    alert("請選擇兩檔不同的 ETF 進行對戰！");
+    return;
+  }
+
+  const nameA = document.getElementById('etfA').options[document.getElementById('etfA').selectedIndex].text.split(' ')[0];
+  const nameB = document.getElementById('etfB').options[document.getElementById('etfB').selectedIndex].text.split(' ')[0];
+  
+  const monthly = parseInt(document.getElementById('amount').value) || 10000;
+  const years = parseInt(document.getElementById('years').value);
+  const requestedMonths = years * 12;
+  
+  const dataA = etfData[tickerA] || [];
+  const dataB = etfData[tickerB] || [];
+  
+  // 防呆：找共同存在的最長歷史時間
+  const maxMonths = Math.min(dataA.length, dataB.length);
+  const actualMonths = Math.min(maxMonths, requestedMonths);
+  
+  const warningDiv = document.getElementById('warning');
+  if (actualMonths < requestedMonths) {
+    const actualYears = (actualMonths / 12).toFixed(1);
+    warningDiv.innerHTML = `⚠️ <strong>溫馨提醒：</strong>因其中一檔 ETF 上市時間較晚，系統已自動為您切換為近 <strong>${actualYears} 年</strong> 的共同歷史數據進行對比。`;
+    warningDiv.style.display = 'block';
+  } else {
+    warningDiv.style.display = 'none';
+  }
+
+  const sliceA = dataA.slice(-actualMonths);
+  const sliceB = dataB.slice(-actualMonths);
+  
+  let unitsA = 0, unitsB = 0;
+  const labels = [];
+  const lineA = [];
+  const lineB = [];
+  
+  for (let i = 0; i < actualMonths; i++) {
+    const dA = sliceA[i];
+    const dB = sliceB[i];
+    labels.push(dA.date);
+    
+    // 每月定額買入，計算累積股數 (依據還原收盤價)
+    unitsA += monthly / dA.adj_close;
+    unitsB += monthly / dB.adj_close;
+    
+    // 計算當下總資產價值
+    const valA = Math.round(unitsA * dA.adj_close);
+    const valB = Math.round(unitsB * dB.adj_close);
+    
+    lineA.push(valA);
+    lineB.push(valB);
+  }
+
+  // 畫圖表
+  if (window.myChart) window.myChart.destroy();
+  window.myChart = new Chart(document.getElementById('chart'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: nameA + ' (總報酬)', data: lineA, borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.1)', tension: 0.3, borderWidth: 3, pointRadius: 0 },
+        { label: nameB + ' (總報酬)', data: lineB, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.3, borderWidth: 3, pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { 
+        legend: { position: 'top', labels: { font: { size: 14, family: 'system-ui' } } },
+        tooltip: { callbacks: { label: function(context) { return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' 元'; } } }
+      },
+      scales: { 
+        y: { ticks: { callback: v => (v/10000).toFixed(0) + ' 萬' }, grid: { color: '#f1f5f9' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 計算並顯示震撼差異
+  const finalA = lineA[lineA.length - 1];
+  const finalB = lineB[lineB.length - 1];
+  const diff = finalA - finalB;
+  
+  const diffElem = document.getElementById('diff');
+  if (diff > 0) {
+    diffElem.innerHTML = `🏆 同樣投入資金，${nameA} 總資產多出 <strong>${(diff/10000).toFixed(1)} 萬</strong>`;
+  } else if (diff < 0) {
+    diffElem.innerHTML = `🏆 同樣投入資金，${nameB} 總資產多出 <strong>${(Math.abs(diff)/10000).toFixed(1)} 萬</strong>`;
+  } else {
+    diffElem.innerHTML = `🤝 兩檔 ETF 最終總資產平手`;
+  }
+  
+  document.getElementById('result').style.display = 'block';
+}
+</script>
+</body>
+</html>
