@@ -6,7 +6,7 @@
   <title>EnPassive｜ETF 總報酬幻覺拆解器</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    :root { --primary-color: #2563eb; --bg-color: #f0f4f8; --text-main: #1e293b; --text-muted: #64748b; --border: #e2e8f0; }
+    :root { --primary-color: #2563eb; --bg-color: #f0f4f8; --text-main: #1e293b; --text-muted: #64748b; --border: #e2e8f0; --risk-red: #d32f2f; }
     body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-color); color: var(--text-main); margin:0; padding: 20px; }
     .container { max-width: 850px; margin: 0 auto; padding: 30px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
     h1 { color: #0f172a; text-align: center; margin-bottom: 8px; font-size: 26px; }
@@ -19,8 +19,11 @@
     label { display:block; margin-bottom: 8px; font-weight:600; color:#334155; font-size: 14px; }
     input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; box-sizing: border-box; background: #f8fafc; }
     
-    button { background: var(--primary-color); color: white; padding: 14px 32px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin: 10px 0 20px; transition: 0.2s; }
+    button { background: var(--primary-color); color: white; padding: 14px 32px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin: 10px 0 10px; transition: 0.2s; }
     button:hover { background: #1d4ed8; }
+
+    /* 紅色免責聲明區塊 */
+    .disclaimer-top { text-align:center; color: var(--risk-red); font-size:13px; font-weight:bold; margin:10px 0 25px; line-height:1.6; background:#fff1f0; padding:12px; border-radius:8px; border:1px solid #ffccc7; }
     
     .warning { background: #fef3c7; color: #92400e; padding: 12px 15px; border-radius: 8px; margin: 15px 0; display: none; font-size: 14px; border-left: 4px solid #f59e0b; }
     .result { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); }
@@ -28,11 +31,7 @@
     .final-amounts { font-size: 16px; color: #475569; margin-bottom: 15px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px; line-height: 2; }
     .diff-text { font-size: 22px; font-weight: 700; color: #b91c1c; text-align: center; }
 
-    /* 底部品牌與版權區樣式 */
     .brand-section { margin-top: 40px; padding-top: 25px; border-top: 2px solid #f1f5f9; text-align: center; }
-    .donate-box { margin-top: 25px; font-size: 14px; color: #64748b; line-height: 1.8; }
-    .article-link { margin-top: 20px; }
-    
     footer { margin-top: 50px; padding: 20px; text-align: center; font-size: 12px; color: #6c757d; border-top: 1px solid #eaeaea; line-height: 1.8; }
   </style>
 </head>
@@ -66,6 +65,11 @@
 
   <button onclick="calculate()">🚀 啟動總報酬壓力測試</button>
 
+  <div class="disclaimer-top">
+    ⚠️ 本工具僅供教育參考與歷史數據模擬之用，不構成任何投資建議。<br>
+    過去績效不代表未來結果，投資必有風險，決策前請務必自行判斷。
+  </div>
+
   <div id="warning" class="warning"></div>
 
   <div class="result" id="result" style="display:none;">
@@ -75,17 +79,17 @@
       <div id="diff" class="diff-text"></div>
     </div>
     <p style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:15px;">
-      * 以上模擬採用「還原收盤價」，已自動計入股息再投資之複利效應。
+      * 以上數據採用「還原收盤價 (Adjusted Close)」，已計入股息再投資之複利效應。
     </p>
   </div>
 
   <div class="brand-section">
-    <div class="donate-box">
+    <div style="margin-top: 25px; font-size: 14px; color: #64748b; line-height: 1.8;">
         認同我的理性拆解？請杯咖啡支持我繼續產出更多實戰內容 ☕<br>
         <a href="https://vocus.cc/pay/donate/@EnPassive?donateSourceType=exclusiveLink" target="_blank" style="color: #ea580c; text-decoration: underline; font-weight: bold;">👉 點我支持 EnPassive 的研究計畫</a>
     </div>
 
-    <div class="article-link">
+    <div style="margin-top: 20px;">
         <a href="https://vocus.cc/article/69bea489fd89780001df06dd" target="_blank" style="font-size: 13px; color: #3b82f6; text-decoration: none;">🔍 看看我的方格子文章?</a>
     </div>
   </div>
@@ -122,7 +126,7 @@ function calculate() {
   const dataA = etfData[tA] || [], dataB = etfData[tB] || [];
   const actualMonths = Math.min(dataA.length, dataB.length, y * 12);
   const warn = document.getElementById('warning');
-  if (actualMonths < y * 12) { warn.innerHTML = `⚠️ 注意：僅使用近 <strong>${(actualMonths/12).toFixed(1)} 年</strong> 歷史數據進行對應。`; warn.style.display = 'block'; } else warn.style.display = 'none';
+  if (actualMonths < y * 12) { warn.innerHTML = `⚠️ 注意：僅使用近 <strong>${(actualMonths/12).toFixed(1)} 年</strong> 歷史數據進行對比。`; warn.style.display = 'block'; } else warn.style.display = 'none';
   const sA = dataA.slice(-actualMonths), sB = dataB.slice(-actualMonths);
   let uA = 0, uB = 0, l = [], lA = [], lB = [];
   for (let i = 0; i < actualMonths; i++) {
@@ -131,7 +135,7 @@ function calculate() {
   }
   if (window.myChart) window.myChart.destroy();
   window.myChart = new Chart(document.getElementById('chart'), {
-    type: 'line', data: { labels: l, datasets: [{ label: nA + ' (總報酬)', data: lA, borderColor: '#2563eb', tension: 0.3, borderWidth: 3, pointRadius: 0 }, { label: nB + ' (總報酬)', data: lB, borderColor: '#f59e0b', tension: 0.3, borderWidth: 3, pointRadius: 0 }] },
+    type: 'line', data: { labels: l, datasets: [{ label: nA, data: lA, borderColor: '#2563eb', tension: 0.3, borderWidth: 3, pointRadius: 0 }, { label: nB, data: lB, borderColor: '#f59e0b', tension: 0.3, borderWidth: 3, pointRadius: 0 }] },
     options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales: { y: { ticks: { callback: v => (v/10000).toFixed(0) + ' 萬' } } } }
   });
   const fA = lA[lA.length - 1], fB = lB[lB.length - 1], d = fA - fB;
