@@ -121,7 +121,9 @@ function initSelects() {
 }
 
 let etfData = {};
-fetch('etf_data.json').then(r => r.json()).then(d => { etfData = d; initSelects(); });
+fetch('etf_data.json?' + new Date().getTime())
+  .then(r => r.json())
+  .then(d => { etfData = d; initSelects(); console.log("✅ json 已載入"); });
 
 function calculate() {
   const tA = document.getElementById('etfA').value, tB = document.getElementById('etfB').value;
@@ -136,7 +138,7 @@ function calculate() {
   
   const warn = document.getElementById('warning');
   if (actualMonths < y * 12) { 
-    warn.innerHTML = `⚠️ 注意：因上市時間限制，僅使用近 <strong>${(actualMonths/12).toFixed(1)} 年</strong> 歷史數據進行對比。`; 
+    warn.innerHTML = `⚠️ 注意：僅使用近 <strong>${(actualMonths/12).toFixed(1)} 年</strong> 歷史數據。`; 
     warn.style.display = 'block'; 
   } else warn.style.display = 'none';
   
@@ -158,22 +160,23 @@ function calculate() {
   const roiA = ((fA / totalInvested) - 1) * 100;
   const roiB = ((fB / totalInvested) - 1) * 100;
 
-  // ✨ 修正後的標的年化計算（從實際回測開始的第1個月計算）
+  // 最終修正：強制從 2014 年分割後開始計算（避開分割影響）
   const realYears = actualMonths / 12;
   let cagrA = 0, cagrB = 0;
-  
-  if (sA.length >= actualMonths) {
-    const startIdxA = sA.length - actualMonths;   // 15年前的位置
-    const firstA = sA[startIdxA].adj_close;
-    const lastA = sA[sA.length - 1].adj_close;
-    if (firstA > 0) cagrA = (Math.pow(lastA / firstA, 1 / realYears) - 1) * 100;
-  }
-  if (sB.length >= actualMonths) {
-    const startIdxB = sB.length - actualMonths;
-    const firstB = sB[startIdxB].adj_close;
-    const lastB = sB[sB.length - 1].adj_close;
-    if (firstB > 0) cagrB = (Math.pow(lastB / firstB, 1 / realYears) - 1) * 100;
-  }
+
+  // 找到 2014 年之後的第一筆資料作為起點
+  const startYear = 2014;
+  let startIdxA = sA.findIndex(item => parseInt(item.date.substring(0,4)) >= startYear);
+  if (startIdxA === -1) startIdxA = 0;
+  const firstA = sA[startIdxA].adj_close;
+  const lastA = sA[sA.length - 1].adj_close;
+  if (firstA > 0) cagrA = (Math.pow(lastA / firstA, 1 / realYears) - 1) * 100;
+
+  let startIdxB = sB.findIndex(item => parseInt(item.date.substring(0,4)) >= startYear);
+  if (startIdxB === -1) startIdxB = 0;
+  const firstB = sB[startIdxB].adj_close;
+  const lastB = sB[sB.length - 1].adj_close;
+  if (firstB > 0) cagrB = (Math.pow(lastB / firstB, 1 / realYears) - 1) * 100;
 
   if (window.myChart) window.myChart.destroy();
   window.myChart = new Chart(document.getElementById('chart'), {
