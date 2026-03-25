@@ -116,22 +116,58 @@ const etfList = [
 
 function initSelects() {
   const sA = document.getElementById('etfA'), sB = document.getElementById('etfB');
-  let h = ''; etfList.forEach(e => h += `<option value="${e.id}">${e.name}</option>`);
-  sA.innerHTML = h; sB.innerHTML = h; sA.value = '0050.TW'; sB.value = '0056.TW';
+  let h = ''; 
+  etfList.forEach(e => h += `<option value="${e.id}">${e.name}</option>`);
+  sA.innerHTML = h; 
+  sB.innerHTML = h; 
+  sA.value = '0050.TW'; 
+  sB.value = '0056.TW';
 }
 
 let etfData = {};
 fetch('etf_data.json?' + new Date().getTime())
   .then(r => r.json())
-  .then(d => { etfData = d; initSelects(); });
+  .then(d => { 
+    etfData = d; 
+    initSelects(); 
+  });
+
+// ==================== 正確的定額年化報酬率（DCA IRR） ====================
+function dcaAnnualized(fv, pmt, nMonths) {
+  if (nMonths <= 1 || fv <= pmt * nMonths) return 0;
+  
+  // Newton-Raphson 求月報酬率 i
+  let rate = 0.005; // 初始猜值（每月 0.5%）
+  for (let iter = 0; iter < 80; iter++) {
+    const fvCalc = pmt * ((Math.pow(1 + rate, nMonths) - 1) / rate);
+    const error = fvCalc - fv;
+    if (Math.abs(error) < 1) break; // 誤差小於 1 元就足夠
+    
+    // 導數
+    const deriv = pmt * (
+      (nMonths * Math.pow(1 + rate, nMonths - 1) * rate) - 
+      (Math.pow(1 + rate, nMonths) - 1)
+    ) / (rate * rate);
+    
+    if (deriv === 0) break;
+    rate -= error / deriv;
+    if (rate < -0.999) rate = -0.999; // 避免發散
+  }
+  
+  const annualized = Math.pow(1 + rate, 12) - 1;
+  return Math.max(annualized * 100, 0); // 轉成年化百分比
+}
 
 function calculate() {
   const tA = document.getElementById('etfA').value, tB = document.getElementById('etfB').value;
-  if(tA === tB) { alert("請選擇兩檔不同的 ETF！"); return; }
+  if (tA === tB) { alert("請選擇兩檔不同的 ETF！"); return; }
   
-  const nA = document.getElementById('etfA').options[document.getElementById('etfA').selectedIndex].text.split(' ')[0];
-  const nB = document.getElementById('etfB').options[document.getElementById('etfB').selectedIndex].text.split(' ')[0];
-  const m = parseInt(document.getElementById('amount').value) || 10000, y = parseInt(document.getElementById('years').value);
+  // 使用完整名稱（含中文）
+  const nA = document.getElementById('etfA').options[document.getElementById('etfA').selectedIndex].text;
+  const nB = document.getElementById('etfB').options[document.getElementById('etfB').selectedIndex].text;
+  
+  const m = parseInt(document.getElementById('amount').value) || 10000;
+  const y = parseInt(document.getElementById('years').value);
   
   const dataA = etfData[tA] || [], dataB = etfData[tB] || [];
   const actualMonths = Math.min(dataA.length, dataB.length, y * 12);
@@ -160,21 +196,9 @@ function calculate() {
   const roiA = ((fA / totalInvested) - 1) * 100;
   const roiB = ((fB / totalInvested) - 1) * 100;
 
-  const realYears = actualMonths / 12;
-  let cagrA = 0, cagrB = 0;
-  
-  if (sA.length >= actualMonths && actualMonths > 0) {
-    const startIdx = sA.length - actualMonths;
-    const firstA = sA[startIdx].adj_close;
-    const lastA = sA[sA.length - 1].adj_close;
-    if (firstA > 0) cagrA = (Math.pow(lastA / firstA, 1 / realYears) - 1) * 100;
-  }
-  if (sB.length >= actualMonths && actualMonths > 0) {
-    const startIdx = sB.length - actualMonths;
-    const firstB = sB[startIdx].adj_close;
-    const lastB = sB[sB.length - 1].adj_close;
-    if (firstB > 0) cagrB = (Math.pow(lastB / firstB, 1 / realYears) - 1) * 100;
-  }
+  // 正確的定額年化報酬率（DCA IRR）
+  const cagrA = dcaAnnualized(fA, m, actualMonths);
+  const cagrB = dcaAnnualized(fB, m, actualMonths);
 
   if (window.myChart) window.myChart.destroy();
   window.myChart = new Chart(document.getElementById('chart'), {
